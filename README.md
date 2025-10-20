@@ -24,6 +24,7 @@ python network_app.py --mode udp-client --port 8889
 
 ```bash
 dd if=/dev/zero bs=1024 count=20 | tr '\0' 'A' > large_msg.txt
+echo "" >> large_msg.txt
 nc localhost 8888 < large_msg.txt
 ```
 

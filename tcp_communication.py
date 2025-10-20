@@ -75,30 +75,42 @@ class TCPServer:
     
     def handle_client(self, client_id, client_socket, client_address):
         try:
+            buffer = b""  # Буфер накопления данных
+            
             while self.running:
                 data = client_socket.recv(1024)
                 if not data:
                     break
                     
-                message = data.decode().strip()
-                print(f"\n[Client {client_id}] {message}")
-                print("Server command: ", end="", flush=True)
+                buffer += data
                 
-                if message.lower() == 'quit':
-                    client_socket.send(b"Goodbye!\n")
-                    break
-                elif message.lower() == '/ping':
-                    client_socket.send(b"pong\n")
-                elif message.lower() == '/stats':
-                    response = f"Server stats: Clients connected: {len(self.clients)}\n"
-                    client_socket.send(response.encode())
-                elif message.lower() == '/help':
-                    response = "Available commands: /help, /stats, /ping, quit\n"
-                    client_socket.send(response.encode())
-                else:
-                    response = f"Echo: {message}\n"
-                    client_socket.send(response.encode())
+                while b'\n' in buffer:
+                    message_bytes, buffer = buffer.split(b'\n', 1)
                     
+                    try:
+                        message = message_bytes.decode('utf-8').strip()
+                        if message:
+                            print(f"\n[Client {client_id}] {message}")
+                            print("Server command: ", end="", flush=True)
+
+                            if message.lower() == 'quit':
+                                client_socket.send(b"Goodbye!\n")
+                                return
+                            elif message.lower() == '/ping':
+                                client_socket.send(b"pong\n")
+                            elif message.lower() == '/stats':
+                                response = f"Server stats: Clients connected: {len(self.clients)}\n"
+                                client_socket.send(response.encode())
+                            elif message.lower() == '/help':
+                                response = "Available commands: /help, /stats, /ping, quit\n"
+                                client_socket.send(response.encode())
+                            else:
+                                response = f"Echo: {message}\n"
+                                client_socket.send(response.encode())
+                    except UnicodeDecodeError as e:
+                        print(f"\n[Client {client_id}] UTF-8 decode error: {e}")
+                        print("Server command: ", end="", flush=True)
+                        
         except ConnectionResetError:
             print(f"\n[Client {client_id} disconnected unexpectedly]")
             print("Server command: ", end="", flush=True)
@@ -232,6 +244,8 @@ class TCPClient:
             print("TCP Client stopped")
     
     def listen_messages(self):
+        buffer = b"" # Буфер накопления данных
+        
         while self.running:
             try:
                 data = self.socket.recv(1024)
@@ -240,9 +254,19 @@ class TCPClient:
                     self.running = False
                     break
                     
-                message = data.decode().strip()
-                print(f"\n>>> {message}")
-                print("Enter message: ", end="", flush=True)
+                buffer += data
+
+                while b'\n' in buffer:
+                    message_bytes, buffer = buffer.split(b'\n', 1)
+                    
+                    try:
+                        message = message_bytes.decode('utf-8').strip()
+                        if message:
+                            print(f"\n>>> {message}")
+                            print("Enter message: ", end="", flush=True)
+                    except UnicodeDecodeError:
+                        print(f"\n>>> [Invalid UTF-8 data received]")
+                        print("Enter message: ", end="", flush=True)
                     
             except ConnectionResetError:
                 print("\nConnection reset by server")
